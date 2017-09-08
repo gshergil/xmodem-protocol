@@ -67,6 +67,14 @@ void SenderX::genBlk(blkT blkBuf)
     blkBuf[1] = blkNum;
     blkBuf[2] = 0xFF - blkNum;
     
+    uint8_t checksum = 0x00;
+    for(int ii = 0; ii < CHUNK_SZ; ii++)
+    {
+        checksum += blkBuf[3+ii];
+    }
+    
+    blkBuffer[3+CHUNK_SZ] = checksum;
+    
     //rclui - Still need <chksum>
     
 }
