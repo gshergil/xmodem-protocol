@@ -63,20 +63,29 @@ void SenderX::genBlk(blkT blkBuf)
 	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )))
 		ErrorPrinter("myRead(transferringFileD, &blkBuf[0], CHUNK_SZ )", __FILE__, __LINE__, errno);
 	// ********* and additional code must be written ***********
-    blkBuf[0] = 0x01;
+    blkBuf[0] = SOH;
     blkBuf[1] = blkNum;
     blkBuf[2] = 0xFF - blkNum;
-    
+
     uint8_t checksum = 0x00;
-    for(int ii = 0; ii < CHUNK_SZ; ii++)
+
+
+    if(Crcflg)
     {
-        checksum += blkBuf[3+ii];
+    	//For CRC function
     }
-    
-    blkBuffer[3+CHUNK_SZ] = checksum;
-    
+    else
+    {
+    	for(int ii = 0; ii < CHUNK_SZ; ii++)
+    	{
+    		checksum += blkBuf[3+ii];
+    	}
+
+    	blkBuf[3+CHUNK_SZ] = checksum;
+    }
+
     //rclui - Still need <chksum>
-    
+
 }
 
 void SenderX::sendFile()
@@ -99,23 +108,26 @@ void SenderX::sendFile()
 		while (bytesRd)
 		{
 			blkNum ++; // 1st block about to be sent or previous block was ACK'd
-            
+
 			// ********* fill in some code here to send a block ***********
-            
+
             //rclui - WIP
-            for (int ii = 0, ii < BLK_SZ_CRC, ii++)
+
+            for (int ii = 0; ii < BLK_SZ_CRC; ii++)
             {
-                sendByte(blkT[ii])
+                sendByte(blkBuf[ii]);
             }
-            
+
 			// assume sent block will be ACK'd
 			genBlk(blkBuf); // prepare next block
 			// assume sent block was ACK'd
 		};
 		// finish up the protocol, assuming the receiver behaves normally
 		// ********* fill in some code here ***********
-        
+
         // rclui - write <eot> twice here.
+		sendByte(EOT);
+		sendByte(EOT);
 
 		//(myClose(transferringFileD));
 		if (-1 == myClose(transferringFileD))
@@ -123,4 +135,3 @@ void SenderX::sendFile()
 		result = "Done";
 	}
 }
-
