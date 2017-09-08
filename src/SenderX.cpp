@@ -60,9 +60,15 @@ prepared or if the input file is empty (i.e. has 0 length).
 void SenderX::genBlk(blkT blkBuf)
 {
 	// ********* The next line needs to be changed ***********
-	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[0], CHUNK_SZ )))
+	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )))
 		ErrorPrinter("myRead(transferringFileD, &blkBuf[0], CHUNK_SZ )", __FILE__, __LINE__, errno);
 	// ********* and additional code must be written ***********
+    blkBuf[0] = 0x01;
+    blkBuf[1] = blkNum;
+    blkBuf[2] = 0xFF - blkNum;
+    
+    //rclui - Still need <chksum>
+    
 }
 
 void SenderX::sendFile()
@@ -85,15 +91,23 @@ void SenderX::sendFile()
 		while (bytesRd)
 		{
 			blkNum ++; // 1st block about to be sent or previous block was ACK'd
-
+            
 			// ********* fill in some code here to send a block ***********
-
+            
+            //rclui - WIP
+            for (int ii = 0, ii < BLK_SZ_CRC, ii++)
+            {
+                sendByte(blkT[ii])
+            }
+            
 			// assume sent block will be ACK'd
 			genBlk(blkBuf); // prepare next block
 			// assume sent block was ACK'd
 		};
 		// finish up the protocol, assuming the receiver behaves normally
 		// ********* fill in some code here ***********
+        
+        // rclui - write <eot> twice here.
 
 		//(myClose(transferringFileD));
 		if (-1 == myClose(transferringFileD))
