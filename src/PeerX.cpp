@@ -1,12 +1,12 @@
 //============================================================================
 //
-//% Student Name 1: student1
-//% Student 1 #: 123456781
-//% Student 1 userid (email): stu1 (stu1@sfu.ca)
+//% Student Name 1: Ryan Lui
+//% Student 1 #: 301251951
+//% Student 1 userid (email): rclui (rclui@sfu.ca)
 //
-//% Student Name 2: student2
-//% Student 2 #: 123456782
-//% Student 2 userid (email): stu2 (stu2@sfu.ca)
+//% Student Name 2: Winsey Chui
+//% Student 2 #: 301246253
+//% Student 2 userid (email): winseyc (winseyc@sfu.ca)
 //
 //% Below, edit to list any people who helped you with the code in this file,
 //%      or put 'None' if nobody helped (the two of) you.
@@ -109,7 +109,7 @@ crc16ns (uint16_t* crc16nsP, uint8_t* buf)
 		 oldcrc=updcrc(0,updcrc(0,oldcrc));
 
 		 // ********* The next line needs to be changed ***********
-		 *crc16nsP = 0;
+		 *crc16nsP = oldcrc;
 
 		 //sendline((int)oldcrc>>8);
 		 //sendline((int)oldcrc);

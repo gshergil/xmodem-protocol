@@ -1,12 +1,12 @@
 //============================================================================
 //
-//% Student Name 1: student1
-//% Student 1 #: 123456781
-//% Student 1 userid (email): stu1 (stu1@sfu.ca)
+//% Student Name 1: Ryan Lui
+//% Student 1 #: 301251951
+//% Student 1 userid (email): rclui (rclui@sfu.ca)
 //
-//% Student Name 2: student2
-//% Student 2 #: 123456782
-//% Student 2 userid (email): stu2 (stu2@sfu.ca)
+//% Student Name 2: Winsey Chui
+//% Student 2 #: 301246253
+//% Student 2 userid (email): winseyc (winseyc@sfu.ca)
 //
 //% Below, edit to list any people who helped you with the code in this file,
 //%      or put 'None' if nobody helped (the two of) you.
@@ -61,7 +61,7 @@ void SenderX::genBlk(blkT blkBuf)
 {
 	// ********* The next line needs to be changed ***********
 	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )))
-		ErrorPrinter("myRead(transferringFileD, &blkBuf[0], CHUNK_SZ )", __FILE__, __LINE__, errno);
+		ErrorPrinter("myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )", __FILE__, __LINE__, errno);
 	// ********* and additional code must be written ***********
     blkBuf[0] = SOH;
     blkBuf[1] = blkNum;
@@ -69,10 +69,10 @@ void SenderX::genBlk(blkT blkBuf)
 
     uint8_t checksum = 0x00;
 
-
     if(Crcflg)
     {
-    	//For CRC function
+    	crc16ns((uint16_t*)&blkBuf[3+CHUNK_SZ], &blkBuf[3]);
+
     }
     else
     {
@@ -83,8 +83,6 @@ void SenderX::genBlk(blkT blkBuf)
 
     	blkBuf[3+CHUNK_SZ] = checksum;
     }
-
-    //rclui - Still need <chksum>
 
 }
 
@@ -111,7 +109,6 @@ void SenderX::sendFile()
 
 			// ********* fill in some code here to send a block ***********
 
-            //rclui - WIP
 
             for (int ii = 0; ii < BLK_SZ_CRC; ii++)
             {
