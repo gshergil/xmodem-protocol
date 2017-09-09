@@ -63,7 +63,17 @@ void SenderX::genBlk(blkT blkBuf)
 	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )))
 		ErrorPrinter("myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )", __FILE__, __LINE__, errno);
 	// ********* and additional code must be written ***********
-    blkBuf[0] = SOH;
+	// If we reach the end, and we read less than 128 bytes, write 0s
+	// everywhere else.
+	if (bytesRd != -1 && bytesRd != CHUNK_SZ)
+    {
+    	for(int ii=bytesRd; ii < CHUNK_SZ; ii++)
+    	{
+    		blkBuf[3+ii] = 0x00;
+    	}
+
+    }
+	blkBuf[0] = SOH;
     blkBuf[1] = blkNum;
     blkBuf[2] = 0xFF - blkNum;
 
