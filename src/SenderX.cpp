@@ -119,11 +119,21 @@ void SenderX::sendFile()
 
 			// ********* fill in some code here to send a block ***********
 
+			if(Crcflg)
+			{
+				for (int ii = 0; ii < BLK_SZ_CRC; ii++)
+				{
+					sendByte(blkBuf[ii]);
+				}
+			}
+			else
+			{
+				for (int ii = 0; ii < BLK_SZ; ii++)
+				{
+					sendByte(blkBuf[ii]);
+				}
+			}
 
-            for (int ii = 0; ii < BLK_SZ_CRC; ii++)
-            {
-                sendByte(blkBuf[ii]);
-            }
 
 			// assume sent block will be ACK'd
 			genBlk(blkBuf); // prepare next block
