@@ -69,7 +69,7 @@ void SenderX::genBlk(blkT blkBuf)
     {
     	for(int ii=bytesRd; ii < CHUNK_SZ; ii++)
     	{
-    		blkBuf[3+ii] = 0x00;
+    		blkBuf[3+ii] = CTRL_Z; // As per xmode-edited.txt
     	}
 
     }
