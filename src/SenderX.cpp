@@ -106,7 +106,7 @@ void SenderX::sendFile()
 	else {
 		cout << "Sender will send " << fileName << endl;
 
-		blkNum = 0; // but first block sent will be block #1, not #0
+		blkNum = 1; // but first block sent will be block #1, not #0
 
 		// do the protocol, and simulate a receiver that positively acknowledges every
 		//	block that it receives.
