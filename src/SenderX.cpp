@@ -63,13 +63,13 @@ void SenderX::genBlk(blkT blkBuf)
 	if (-1 == (bytesRd = myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )))
 		ErrorPrinter("myRead(transferringFileD, &blkBuf[3], CHUNK_SZ )", __FILE__, __LINE__, errno);
 	// ********* and additional code must be written ***********
-	// If we reach the end, and we read less than 128 bytes, write 0s
+	// If we reach the end, and we read less than 128 bytes, write CTRL_Zs
 	// everywhere else.
 	if (bytesRd != -1 && bytesRd != CHUNK_SZ)
     {
     	for(int ii=bytesRd; ii < CHUNK_SZ; ii++)
     	{
-    		blkBuf[3+ii] = CTRL_Z; // As per xmode-edited.txt
+    		blkBuf[3+ii] = CTRL_Z; // As per xmodem-edited.txt
     	}
 
     }
