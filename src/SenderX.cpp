@@ -11,12 +11,12 @@
 //% Below, edit to list any people who helped you with the code in this file,
 //%      or put 'None' if nobody helped (the two of) you.
 //
-// Helpers: _everybody helped us/me with the assignment (list names or put 'None')__
+// Helpers: None.
 //
 // Also, list any resources beyond the course textbooks and the course pages on Piazza
 // that you used in making your submission.
 //
-// Resources:  ___________
+// Resources:  None.
 //
 //%% Instructions:
 //% * Put your name(s), student number(s), userid(s) in the above section.
@@ -26,10 +26,15 @@
 //% * Form groups as described at:  https://courses.cs.sfu.ca/docs/students
 //% * Submit files to courses.cs.sfu.ca
 //
-// File Name   : SenderX.cc
+// File Name   : SenderX.cpp
 // Version     : September 3rd, 2017
 // Description : Starting point for ENSC 351 Project
 // Original portions Copyright (c) 2017 Craig Scratchley  (wcs AT sfu DOT ca)
+//
+// Revision 1 (2017-09-14):
+// Part 1 of Multipart project - make sendFile(), genBlk(), and
+// crc16ns() work. Used bit operations instead of htons() to avoid function
+// overheads. 
 //============================================================================
 
 #include <iostream>
