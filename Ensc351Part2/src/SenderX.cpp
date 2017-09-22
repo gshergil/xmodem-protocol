@@ -136,6 +136,10 @@ void SenderX::genBlk(uint8_t blkBuf[BLK_SZ_CRC])
 void SenderX::prep1stBlk()
 {
 	// **** this function will need to be modified ****
+	Crcflg = true;
+	errCnt = 0;
+	firstCrcBlk = true;
+	blkNum = 1;
 	genBlk(blkBuf);
 }
 
@@ -143,6 +147,13 @@ void SenderX::prep1stBlk()
 void SenderX::cs1stBlk()
 {
 	// **** this function will need to be modified ****
+	uint8_t checksum = 0x00;
+	for (int ii = 0; ii < CHUNK_SZ; ii++)
+	{
+		checksum += blkBuf[DATA_POS+ii];
+	}
+
+	blkBuf[PAST_CHUNK] = checksum;
 }
 
 /* while sending the now current block for the first time, prepare the next block if possible.
@@ -191,6 +202,8 @@ void SenderX::can8()
 
 void SenderX::sendFile()
 {
+	enum  { START, ACKNAK, CAN1, EOT1, EOTEOT, DONE, ERROR}; //following state chart
+	int nextState = 0;
 	transferringFileD = myOpen(fileName, O_RDONLY, 0);
 	if(transferringFileD == -1) {
 		cout /* cerr */ << "Error opening input file named: " << fileName << endl;
@@ -198,31 +211,130 @@ void SenderX::sendFile()
 	}
 	else {
 		//blkNum = 0; // but first block sent will be block #1, not #0
-		prep1stBlk();
-
-		// ***** modify the below code according to the protocol *****
-		// below is just a starting point.  You can follow a
-		// 	different structure if you want.
 		char byteToReceive;
-		PE_NOT(myRead(mediumD, &byteToReceive, 1), 1); // assuming get a 'C'
-		Crcflg = true;
-
-		while (bytesRd) {
-			sendBlkPrepNext();
-			// assuming below we get an ACK
+		bool done = false;
+		while (!done){
 			PE_NOT(myRead(mediumD, &byteToReceive, 1), 1);
-		}
-		sendByte(EOT); // send the first EOT
-		PE_NOT(myRead(mediumD, &byteToReceive, 1), 1); // assuming get a NAK
-		sendByte(EOT); // send the second EOT
-		PE_NOT(myRead(mediumD, &byteToReceive, 1), 1); // assuming get an ACK
+			switch(nextState) {
+				case START: {
+					prep1stBlk();
+
+					if( ((byteToReceive == 'C') || (byteToReceive == NAK)) && bytesRd) {
+						if (byteToReceive == NAK)
+						{
+							Crcflg = false;
+							cs1stBlk();
+							firstCrcBlk = false;
+						}
+						sendBlkPrepNext();
+						nextState = ACKNAK;
+					}
+					else if (((byteToReceive == 'C') || (byteToReceive == NAK)) && !bytesRd)
+					{
+						if (byteToReceive == NAK)
+						{
+							firstCrcBlk = false;
+						}
+						sendByte(EOT);
+						nextState = EOT1;
+					}
+					else
+					{
+						nextState = ERROR;
+					}
+				} break; // end case START
+				case ACKNAK: {
+					if (byteToReceive ==  ACK) //implied bytesRd
+					{
+						sendBlkPrepNext();
+						errCnt = 0;
+						firstCrcBlk = false;
+						nextState = ACKNAK; //redundant, but following flowchart.
+					}
+					else if ((byteToReceive == NAK || (byteToReceive == 'C' && firstCrcBlk)) && errCnt < errB)
+					{
+						resendBlk();
+						errCnt++;
+						nextState = ACKNAK; //redundant, but following flowchart.
+					}
+					else if (byteToReceive == CAN)
+					{
+						nextState = CAN1;
+					}
+					else if (byteToReceive == NAK && (errCnt >= errB))
+					//ABORT
+					{
+						can8();
+						result = "ExcessiveNAKs";
+						nextState = DONE;
+					}
+					else if (byteToReceive == ACK  && !bytesRd)
+					{
+						sendByte(EOT);
+						errCnt = 0;
+						firstCrcBlk = false;
+						nextState = EOT1;
+					}
+					else
+					{
+						nextState = ERROR;
+					}
+				} break; //end case ACKNAK
+				case CAN1:{
+					// 2 CAN bytes in a row to know that the other end wants to cancel
+					if (byteToReceive = CAN)
+					{
+						result = "RcvCancelled";
+						//clearCan();
+						nextState = DONE;
+					}
+					else
+					{
+						nextState = ERROR;
+					}
+
+				}break; //end case CAN
+				case EOT1:{
+					if (byteToReceive == NAK){
+						sendByte(EOT);
+						nextState = EOTEOT;
+					}
+					else if (byteToReceive == ACK)
+					{
+						result = "1st EOT ACK'd";
+						nextState = DONE;
+					}
+					else
+					{
+						nextState = ERROR;
+					}
+
+				}break; //end case EOT1
+				case EOTEOT:{
+					if (byteToReceive == ACK)
+					{
+						result = "DONE";
+						nextState = DONE;
+					}
+					else
+					{
+						nextState = ERROR;
+					}
+
+				}break; //end case EOTEOT
+				case DONE:{
+					done = true;
+				} break; //end case DONE
+				case ERROR:{
+					cerr << "Sender received totally unexpected char #" << byteToReceive << ": " << (char) byteToReceive << endl;
+					exit(EXIT_FAILURE);
+					nextState = DONE;
+				}break; //end case ERROR
+			} //end switch
+		} //end while
 
 		PE(myClose(transferringFileD));
-		/*
-		if (-1 == myClose(transferringFileD))
-			VNS_ErrorPrinter("myClose(transferringFileD)", __func__, __FILE__, __LINE__, errno);
-		*/
-		result = "Done";  // should this be moved above somewhere??
+
 	}
 }
 
