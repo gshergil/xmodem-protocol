@@ -100,7 +100,7 @@ int main()
 
 	thread term2Thrd(termFunc, Term2);
 
-	// ***** create thread for medium, make its priority 2 levels lower (i.e. priority 2) *****
+	// ***** create thread for medium *****
 
 	termFunc(Term1);
 
