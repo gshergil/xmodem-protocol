@@ -140,7 +140,7 @@ void SenderX::prep1stBlk()
 	errCnt = 0;
 	firstCrcBlk = true;
 	blkNum = 1;
-	genBlk(blkBuf);
+	genBlk(blkBufs[blkNum%2]);
 }
 
 
@@ -150,10 +150,10 @@ void SenderX::cs1stBlk()
 	uint8_t checksum = 0x00;
 	for (int ii = 0; ii < CHUNK_SZ; ii++)
 	{
-		checksum += blkBuf[DATA_POS+ii];
+		checksum += blkBufs[blkNum%2][DATA_POS+ii];
 	}
 
-	blkBuf[PAST_CHUNK] = checksum;
+	blkBufs[blkNum%2][PAST_CHUNK] = checksum;
 }
 
 /* while sending the now current block for the first time, prepare the next block if possible.
@@ -162,8 +162,8 @@ void SenderX::sendBlkPrepNext()
 {
 	// **** this function will need to be modified ****
 	blkNum ++; // 1st block about to be sent or previous block ACK'd
-	uint8_t lastByte = sendMostBlk(blkBuf);
-	genBlk(blkBuf); // prepare next block
+	uint8_t lastByte = sendMostBlk(blkBufs[(blkNum-1)%2]);
+	genBlk(blkBufs[blkNum%2]); // prepare next block
 	sendLastByte(lastByte);
 }
 
@@ -172,6 +172,8 @@ void SenderX::resendBlk()
 {
 	// resend the block including the checksum
 	//  ***** You will have to write this simple function *****
+    uint8_t lastByte = sendMostBlk(blkBufs[(blkNum-1)%2]);
+    sendLastByte(lastByte);
 }
 
 //Send 8 CAN characters in a row (in pairs spaced in time) to the
@@ -282,7 +284,7 @@ void SenderX::sendFile()
 				} break; //end case ACKNAK
 				case CAN1:{
 					// 2 CAN bytes in a row to know that the other end wants to cancel
-					if (byteToReceive = CAN)
+					if (byteToReceive == CAN)
 					{
 						result = "RcvCancelled";
 						//clearCan();

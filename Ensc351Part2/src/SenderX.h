@@ -28,8 +28,8 @@ public:
 	bool firstCrcBlk;
 
 private:
-	blkT blkBuf;		// A block
-	//blkT blkBufs[2];	// Array of two blocks
+	//blkT blkBuf;		// A block
+	blkT blkBufs[2];	// Array of two blocks
 
 	uint8_t blkNum;		// number of current block to be acknowledged
 //	void genBlk(blkT blkBuf);
