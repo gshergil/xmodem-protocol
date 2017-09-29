@@ -56,26 +56,113 @@ void ReceiverX::receiveFile()
 	transferringFileD = PE2(creat(fileName, mode), fileName);
 
 	// ***** improve this member function *****
+	enum  { START, CRC, RECEIVE_FIRST, BLKNUM255, BLKNUM, VERIFY, EOT1, CAN1, DONE}; //fix
+	int nextState = 0;
+	bool done = false;
+	//uint8_t crcCounter = 0;
 
-	// below is just an example template.  You can follow a
-	// 	different structure if you want.
+	while(!done){
+		switch(nextState) {
+			case START: {
+				//crcCounter = 0;
+				numLastGoodBlk = 0;
+				if (Crcflg)
+				{
+					sendByte('C');
+				}
+				else
+				{
+					sendByte(NAK);
+				}
+				nextState = RECEIVE_FIRST;
+			}break;	//end case START
+			case RECEIVE_FIRST: {
+				PE_NOT(myRead(mediumD, rcvBlk, 1), 1);	//Read first byte
+				if (rcvBlk[0] == EOT)
+				{
+					sendByte(NAK);
+					nextState = EOT1;
+				}
+				else if (rcvBlk[0] == CAN || errCnt > 11)
+				{
+					nextState = CAN1;
+				}
+				else //rcvBlk[0] == SOH
+				{
+					getRestBlk();
+					nextState = BLKNUM255;
+				}
+			}break; //end case RECEIVE_FIRST
+			case BLKNUM255: {
+				if (rcvBlk[1]+rcvBlk[2] != 255)
+				{
+					sendByte(NAK);
+					errCnt++;
+					nextState = RECEIVE_FIRST;
+				}
+				else
+				{
+					nextState = BLKNUM;
+				}
+			} break; //end case BLKNUM255
+			case BLKNUM: {
+				if ((rcvBlk[2] == numLastGoodBlk) || (rcvBlk[2] == numLastGoodBlk+1))
+				{
+					// if blkNum is previous blkNum or current blkNum
+					nextState = VERIFY;
+				}
+				else
+				{
+					nextState = DONE;
+					result = "Error";
+				}
+			}break; //end case BLKNUM
+			case VERIFY: {
+				uint16_t crc = 0;
+				uint8_t checksum = 0;
+				if (Crcflg)
+				{
+					crc16ns(&crc, &rcvBlk[3]);
+				}
+				else
+				{
+					for (int ii=0; ii<CHUNK_SZ; ii++)
+					{
+						checksum += rcvBlk[DATA_POS+ii];
+					}
+				}
 
-	// inform sender that the receiver is ready and that the
-	//		sender can send the first block
-	sendByte(NCGbyte);
+				// BRANCHING
+				if ((checksum != rcvBlk[PAST_CHUNK] && !Crcflg) || (crc != (uint16_t)rcvBlk[PAST_CHUNK] && Crcflg))
+				{
+					sendByte(NAK);
+					errCnt++;
+				}
+				else
+				{
+					sendByte(ACK);
+					errCnt = 0;
+					numLastGoodBlk++;
+					writeChunk();
+				}
+				nextState = RECEIVE_FIRST;	//Both branches back to receive_first
+			}break; //end case VERIFY
+			case EOT1: {
+				sendByte(ACK);
+				result = "Complete";
+				nextState = DONE;
+			} break; //end case EOT1
+			case CAN1: {
+				result = "Cancelled";
+				nextState = DONE;
+			}break; //end case CAN1
+			case DONE: {
+				done = true;
+			}break; //end case DONE
+		}	//end switch
+	} //end while
 
-	while(PE_NOT(myRead(mediumD, rcvBlk, 1), 1), (rcvBlk[0] == SOH))
-	{
-		getRestBlk();
-		sendByte(ACK);
-		writeChunk();
-	};
-	// EOT was presumably just read in the condition for the while loop
-	sendByte(NAK); // NAK the first EOT
-	PE_NOT(myRead(mediumD, rcvBlk, 1), 1); // presumably read in another EOT
-	sendByte(ACK); // ACK the second EOT
 	PE(close(transferringFileD));
-	result = "Done"; // move this line above somewhere?
 }
 
 /* Only called after an SOH character has been received.

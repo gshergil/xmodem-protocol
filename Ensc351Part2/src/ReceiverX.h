@@ -22,7 +22,7 @@ public:
 row sent because of problems like communication
 problems. An initial NAK (or 'C') does not add to the count. The reception
 of a particular block in good condition for the first time resets the count. */
-//	unsigned errCnt;
+	unsigned errCnt;
 
 private:
 	// blkT rcvBlk;		// a received block
