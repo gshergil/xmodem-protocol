@@ -77,7 +77,8 @@ void ReceiverX::receiveFile()
 				nextState = RECEIVE_FIRST;
 			}break;	//end case START
 			case RECEIVE_FIRST: {
-				PE_NOT(myRead(mediumD, rcvBlk, 1), 1);	//Read first byte
+				//PE_NOT(myRead(mediumD, rcvBlk, 1), 1);	//Read first byte
+				PE_NOT(myReadcond(mediumD, rcvBlk, 1, 1, 0,0),1);
 				if (rcvBlk[0] == EOT)
 				{
 					sendByte(NAK);
@@ -106,7 +107,7 @@ void ReceiverX::receiveFile()
 				}
 			} break; //end case BLKNUM255
 			case BLKNUM: {
-				if ((rcvBlk[2] == numLastGoodBlk) || (rcvBlk[2] == numLastGoodBlk+1))
+				if ((rcvBlk[1] == numLastGoodBlk) || (rcvBlk[1] == numLastGoodBlk+1))
 				{
 					// if blkNum is previous blkNum or current blkNum
 					nextState = VERIFY;
@@ -123,6 +124,7 @@ void ReceiverX::receiveFile()
 				if (Crcflg)
 				{
 					crc16ns(&crc, &rcvBlk[3]);
+					crc = crc << 8 | crc >> 8;
 				}
 				else
 				{
@@ -133,7 +135,7 @@ void ReceiverX::receiveFile()
 				}
 
 				// BRANCHING
-				if ((checksum != rcvBlk[PAST_CHUNK] && !Crcflg) || (crc != (uint16_t)rcvBlk[PAST_CHUNK] && Crcflg))
+				if ((checksum != rcvBlk[PAST_CHUNK] && !Crcflg) || (crc != (uint16_t)(rcvBlk[PAST_CHUNK]<< 8|rcvBlk[PAST_CHUNK+1]) && Crcflg))
 				{
 					sendByte(NAK);
 					errCnt++;

@@ -139,7 +139,6 @@ void SenderX::prep1stBlk()
 	Crcflg = true;
 	errCnt = 0;
 	firstCrcBlk = true;
-	blkNum = 1;
 	genBlk(blkBufs[blkNum%2]);
 }
 
@@ -216,7 +215,8 @@ void SenderX::sendFile()
 		char byteToReceive;
 		bool done = false;
 		while (!done){
-			PE_NOT(myRead(mediumD, &byteToReceive, 1), 1);
+			//PE_NOT(myRead(mediumD, &byteToReceive, 1), 1);
+			PE_NOT(myReadcond(mediumD, &byteToReceive, 1, 1, 0, 0), 1);
 			switch(nextState) {
 				case START: {
 					prep1stBlk();
