@@ -161,7 +161,7 @@ void SenderX::sendBlkPrepNext()
 {
 	// **** this function will need to be modified ****
 	blkNum ++; // 1st block about to be sent or previous block ACK'd
-	uint8_t lastByte = sendMostBlk(blkBufs[(blkNum-1)%2]);
+	uint8_t lastByte = sendMostBlk(blkBufs[(uint8_t)(blkNum-1)%2]);
 	genBlk(blkBufs[blkNum%2]); // prepare next block
 	sendLastByte(lastByte);
 }
@@ -171,7 +171,7 @@ void SenderX::resendBlk()
 {
 	// resend the block including the checksum
 	//  ***** You will have to write this simple function *****
-    uint8_t lastByte = sendMostBlk(blkBufs[(blkNum-1)%2]);
+    uint8_t lastByte = sendMostBlk(blkBufs[(uint8_t)(blkNum-1)%2]);
     sendLastByte(lastByte);
 }
 
@@ -246,7 +246,7 @@ void SenderX::sendFile()
 					}
 				} break; // end case START
 				case ACKNAK: {
-					if (byteToReceive ==  ACK) //implied bytesRd
+					if (byteToReceive ==  ACK && bytesRd)
 					{
 						sendBlkPrepNext();
 						errCnt = 0;

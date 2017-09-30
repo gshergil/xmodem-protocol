@@ -86,6 +86,7 @@ void ReceiverX::receiveFile()
 				}
 				else if (rcvBlk[0] == CAN || errCnt > 11)
 				{
+					sendByte(CAN);
 					nextState = CAN1;
 				}
 				else //rcvBlk[0] == SOH
@@ -112,10 +113,17 @@ void ReceiverX::receiveFile()
 					// if blkNum is previous blkNum or current blkNum
 					nextState = VERIFY;
 				}
+				else if (rcvBlk[1] == numLastGoodBlk-1)
+				{
+					//ACK got corrupted to NAK.  Just ACK this again, and move on.
+					sendByte(ACK);
+					nextState = RECEIVE_FIRST;
+				}
 				else
 				{
+					can8();
 					nextState = DONE;
-					result = "Error";
+					result = "Error: Wrong blkNum.";
 				}
 			}break; //end case BLKNUM
 			case VERIFY: {
@@ -150,11 +158,14 @@ void ReceiverX::receiveFile()
 				nextState = RECEIVE_FIRST;	//Both branches back to receive_first
 			}break; //end case VERIFY
 			case EOT1: {
+				PE_NOT(myReadcond(mediumD, rcvBlk, 1, 1, 0,0),1);
 				sendByte(ACK);
 				result = "Complete";
 				nextState = DONE;
 			} break; //end case EOT1
 			case CAN1: {
+				PE_NOT(myReadcond(mediumD, rcvBlk, 1, 1, 0,0),1);
+				sendByte(CAN);
 				result = "Cancelled";
 				nextState = DONE;
 			}break; //end case CAN1
@@ -179,8 +190,67 @@ time that the block was received in "good" condition.
 void ReceiverX::getRestBlk()
 {
 	// ********* this function must be improved ***********
-	PE_NOT(myReadcond(mediumD, &rcvBlk[1], REST_BLK_SZ_CRC, REST_BLK_SZ_CRC, 0, 0), REST_BLK_SZ_CRC);
 	goodBlk1st = goodBlk = true;
+
+	uint16_t crc = 0;
+	uint8_t checksum = 0;
+
+	//Read the correct length.
+	if (Crcflg)
+	{
+		PE_NOT(myReadcond(mediumD, &rcvBlk[1], REST_BLK_SZ_CRC, REST_BLK_SZ_CRC, 0, 0), REST_BLK_SZ_CRC);
+	}
+	else
+	{
+		PE_NOT(myReadcond(mediumD, &rcvBlk[1], REST_BLK_SZ_CS, REST_BLK_SZ_CS, 0, 0), REST_BLK_SZ_CS);
+	}
+
+	//Check for correct complement.
+	if (rcvBlk[1]+rcvBlk[2] != 255)
+	{
+		goodBlk = false;
+		goodBlk1st = false;
+		return;
+	}
+
+	//Check for correct blkNum
+	if (rcvBlk[1] == numLastGoodBlk-1)
+	{
+		//Received previous blk again.
+		goodBlk1st = false;
+	}
+	else if(!(rcvBlk[1] == numLastGoodBlk) || (rcvBlk[1] == numLastGoodBlk+1))
+	{
+		//Not the expected blkNum
+		goodBlk = false;
+		goodBlk1st = false;
+		return;
+	}
+
+	//Check CRC or checksum
+	if (Crcflg)
+	{
+		crc16ns(&crc, &rcvBlk[3]);
+		crc = crc << 8 | crc >> 8;
+		if (crc != (uint16_t)(rcvBlk[PAST_CHUNK]<< 8|rcvBlk[PAST_CHUNK+1]))
+		{
+			goodBlk = false;
+			goodBlk1st = false;
+		}
+	}
+	else
+	{
+		for (int ii=0; ii<CHUNK_SZ; ii++)
+		{
+			checksum += rcvBlk[DATA_POS+ii];
+		}
+		if (checksum != rcvBlk[PAST_CHUNK])
+		{
+			goodBlk = false;
+			goodBlk1st = false;
+		}
+	}
+
 }
 
 //Write chunk (data) in a received block to disk
