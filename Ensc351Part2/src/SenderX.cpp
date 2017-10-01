@@ -203,7 +203,7 @@ void SenderX::can8()
 
 void SenderX::sendFile()
 {
-	enum  { START, ACKNAK, CAN1, EOT1, EOTEOT, DONE, ERROR}; //following state chart
+	enum  { START, ACKNAK, CAN1, EOT1, EOTEOT, ERROR}; //following state chart
 	int nextState = 0;
 	transferringFileD = myOpen(fileName, O_RDONLY, 0);
 	if(transferringFileD == -1) {
@@ -268,7 +268,7 @@ void SenderX::sendFile()
 					{
 						can8();
 						result = "ExcessiveNAKs";
-						nextState = DONE;
+						done = true;
 					}
 					else if (byteToReceive == ACK  && !bytesRd)
 					{
@@ -288,7 +288,7 @@ void SenderX::sendFile()
 					{
 						result = "RcvCancelled";
 						//clearCan();
-						nextState = DONE;
+						done = true;
 					}
 					else
 					{
@@ -304,7 +304,7 @@ void SenderX::sendFile()
 					else if (byteToReceive == ACK)
 					{
 						result = "1st EOT ACK'd";
-						nextState = DONE;
+						done = true;
 					}
 					else
 					{
@@ -316,7 +316,7 @@ void SenderX::sendFile()
 					if (byteToReceive == ACK)
 					{
 						result = "DONE";
-						nextState = DONE;
+						done = true;
 					}
 					else
 					{
@@ -324,13 +324,10 @@ void SenderX::sendFile()
 					}
 
 				}break; //end case EOTEOT
-				case DONE:{
-					done = true;
-				} break; //end case DONE
 				case ERROR:{
 					cerr << "Sender received totally unexpected char #" << byteToReceive << ": " << (char) byteToReceive << endl;
 					exit(EXIT_FAILURE);
-					nextState = DONE;
+					done = true; // May not exit loop if there is nothing left to read.
 				}break; //end case ERROR
 			} //end switch
 		} //end while
