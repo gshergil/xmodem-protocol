@@ -215,8 +215,8 @@ void SenderX::sendFile()
 		char byteToReceive;
 		bool done = false;
 		while (!done){
-			//PE_NOT(myRead(mediumD, &byteToReceive, 1), 1);
-			PE_NOT(myReadcond(mediumD, &byteToReceive, 1, 1, 0, 0), 1);
+			PE_NOT(myRead(mediumD, &byteToReceive, 1), 1);
+			//PE_NOT(myReadcond(mediumD, &byteToReceive, 1, 1, 0, 0), 1);
 			switch(nextState) {
 				case START: {
 					prep1stBlk();

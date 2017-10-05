@@ -58,6 +58,7 @@ void ReceiverX::receiveFile()
 	// ***** improve this member function *****
 	enum  { START, CRC, RECEIVE_FIRST, BLKNUM255, BLKNUM, VERIFY, EOT1, CAN1, DONE}; //fix
 	int nextState = 0;
+
 	bool done = false;
 	//uint8_t crcCounter = 0;
 
@@ -108,12 +109,12 @@ void ReceiverX::receiveFile()
 				}
 			} break; //end case BLKNUM255
 			case BLKNUM: {
-				if ((rcvBlk[1] == numLastGoodBlk) || (rcvBlk[1] == numLastGoodBlk+1))
+				if ( rcvBlk[1] == (uint8_t)(numLastGoodBlk+1))
 				{
 					// if blkNum is previous blkNum or current blkNum
 					nextState = VERIFY;
 				}
-				else if (rcvBlk[1] == numLastGoodBlk-1)
+				else if ((rcvBlk[1] == numLastGoodBlk) )
 				{
 					//ACK got corrupted to NAK.  Just ACK this again, and move on.
 					sendByte(ACK);
@@ -164,7 +165,8 @@ void ReceiverX::receiveFile()
 				nextState = DONE;
 			} break; //end case EOT1
 			case CAN1: {
-				PE_NOT(myReadcond(mediumD, rcvBlk, 1, 1, 0,0),1);
+				PE_NOT(myRead(mediumD, rcvBlk, 1), 1);
+				//PE_NOT(myReadcond(mediumD, rcvBlk, 1, 1, 0,0),1);
 				sendByte(CAN);
 				result = "Cancelled";
 				nextState = DONE;
@@ -198,10 +200,12 @@ void ReceiverX::getRestBlk()
 	//Read the correct length.
 	if (Crcflg)
 	{
+		//PE_NOT(myRead(mediumD, &rcvBlk[1], REST_BLK_SZ_CRC), REST_BLK_SZ_CRC);
 		PE_NOT(myReadcond(mediumD, &rcvBlk[1], REST_BLK_SZ_CRC, REST_BLK_SZ_CRC, 0, 0), REST_BLK_SZ_CRC);
 	}
 	else
 	{
+		//PE_NOT(myRead(mediumD, &rcvBlk[1], REST_BLK_SZ_CS), REST_BLK_SZ_CS);
 		PE_NOT(myReadcond(mediumD, &rcvBlk[1], REST_BLK_SZ_CS, REST_BLK_SZ_CS, 0, 0), REST_BLK_SZ_CS);
 	}
 
