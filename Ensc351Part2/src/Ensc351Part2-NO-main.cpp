@@ -48,7 +48,7 @@ using namespace std;
 enum  {Term1, Term2};  //This can be removed later.
 enum  {TermSkt, MediumSkt};
 
-static int daSktPr[2];	  //Socket Pair between term1 and term2
+//static int daSktPr[2];	  //Socket Pair between term1 and term2
 static int daSktPrT1M[2];	  //Socket Pair between term1 and medium
 static int daSktPrMT2[2];	  //Socket Pair between medium and term2
 
@@ -94,7 +94,7 @@ void mediumFunc(void)
 }
 
 
-int main()
+int myMain()
 {
 	// ***** Modify this function to create the "Kind Medium" thread and communicate with it *****
     
