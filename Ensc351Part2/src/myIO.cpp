@@ -52,8 +52,30 @@ int myCreat(const char *pathname, mode_t mode)
 
 ssize_t myRead( int fildes, void* buf, size_t nbyte )
 {
-	return myReadcond(fildes, buf, nbyte, 1, 0, 0);
+	//return myReadcond(fildes, buf, nbyte, 1, 0, 0);
     //return read(fildes, buf, nbyte );
+
+	// Get the other descriptor
+	int otherDescriptor = oneDBuffer[fildes].pairNum;
+	int bytesRead = 0;
+
+	// Step 1. Do the read from the originating socket first, and store bytes read.
+	bytesRead = read(fildes, buf, nbyte);
+
+	// Step 2. Lock the mutex.  Make sure you lock the right one.
+	lock_guard<mutex> lgLock(oneDBuffer[otherDescriptor].m);
+
+	// Step 3. Decrement the buffer counter.
+	oneDBuffer[otherDescriptor].buffered -= bytesRead;
+
+	// Step 4. If it's 0, notify your other thread.
+	if (oneDBuffer[otherDescriptor].buffered == 0)
+	{
+		oneDBuffer[otherDescriptor].cV.notify_one();
+	}
+
+	// Step 5. Return and unlock (on out of scope)
+	return bytesRead;
 }
 
 ssize_t myWrite( int fildes, const void* buf, size_t nbyte )
@@ -93,15 +115,16 @@ int myTcdrain(int des)
 
 int myReadcond(int des, void * buf, int n, int min, int time, int timeout)
 {
-    // Step 1. Lock the mutex.  Make sure you lock the right one.
+
     // Get the other descriptor
     int fildes = oneDBuffer[des].pairNum;
     int bytesRead = 0;
-    
-    lock_guard<mutex> lgLock(oneDBuffer[fildes].m);
-    
-    // Step 2. Do the read.
+
+    // Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
     bytesRead = wcsReadcond(des, buf, n, min, time, timeout );
+    
+    // Step 2. Lock the mutex.  Make sure you lock the right one.
+    lock_guard<mutex> lgLock(oneDBuffer[fildes].m);
     
     // Step 3. Decrement the buffer counter.
     oneDBuffer[fildes].buffered -= bytesRead;
