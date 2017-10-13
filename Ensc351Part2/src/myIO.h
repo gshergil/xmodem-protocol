@@ -1,3 +1,26 @@
+//============================================================================
+//
+//% Student Name 1: Ryan Lui
+//% Student 1 #: 301251951
+//% Student 1 userid (email): rclui (rclui@sfu.ca)
+//
+//% Student Name 2: Winsey Chui
+//% Student 2 #: 301246253
+//% Student 2 userid (email): winseyc (winseyc@sfu.ca)
+//
+//% Below, edit to list any people who helped you with the code in this file,
+//%      or put 'None' if nobody helped (the two of) you.
+//
+// Helpers: None
+//
+// Also, list any resources beyond the course textbooks and the course pages on Piazza
+// that you used in making your submission.
+//
+// Resources: None
+//
+// Note: Nothing changed in this file.
+
+
 #ifndef MYSOCKET_H_
 #define MYSOCKET_H_
 
