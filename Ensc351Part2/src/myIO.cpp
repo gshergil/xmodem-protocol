@@ -11,14 +11,16 @@
 //% Below, edit to list any people who helped you with the code in this file,
 //%      or put 'None' if nobody helped (the two of) you.
 //
-// Helpers: None
+// Helpers: Ivana Jovasevic, Vladislav Polin, Corey Myrdal
 //
 // Also, list any resources beyond the course textbooks and the course pages on Piazza
 // that you used in making your submission.
 //
 // Resources: None
 //
-// Contains commented out static array version.
+// - v1 contains commented out static array version.
+// - v2 contains dynamic version.
+// - v3 (this) handles Cragi'snew solution.
 //
 
 /* Wrapper functions for ENSC-351, Simon Fraser University, By
@@ -124,38 +126,8 @@ int myCreat(const char *pathname, mode_t mode)
 
 ssize_t myRead( int fildes, void* buf, size_t nbyte )
 {
-	//return myReadcond(fildes, buf, nbyte, 1, 0, 0);
-    //return read(fildes, buf, nbyte );
-
-	// Get the other descriptor
-	//int otherDescriptor = oneDBuffer[fildes].pairNum;
-    int otherDescriptor = myVector[fildes]->pairNum;
-    
-	int bytesRead = 0;
-
-	// Step 1. Do the read from the originating socket first, and store bytes read.
-	bytesRead = read(fildes, buf, nbyte);
-
-	// Step 2. Lock the mutex.  Make sure you lock the right one.
-	//lock_guard<mutex> lgLock(oneDBuffer[otherDescriptor].m);
-    lock_guard<mutex> lgLock(myVector[otherDescriptor]->m);
-
-	// Step 3. Decrement the buffer counter.
-	//oneDBuffer[otherDescriptor].buffered -= bytesRead;
-    myVector[otherDescriptor]->buffered -= bytesRead;
-
-	// Step 4. If it's 0, notify your other thread.
-	// if (oneDBuffer[otherDescriptor].buffered == 0)
-	// {
-	//	oneDBuffer[otherDescriptor].cV.notify_one();
-	// }
-    if (myVector[otherDescriptor]->buffered == 0)
-	{
-		myVector[otherDescriptor]->cV.notify_one();
-	}
-
-	// Step 5. Return and unlock (on out of scope)
-	return bytesRead;
+	// Cast to a myReadcond()
+	return myReadcond(fildes, buf, nbyte, 1, 0, 0);
 }
 
 ssize_t myWrite( int fildes, const void* buf, size_t nbyte )
@@ -242,30 +214,61 @@ int myReadcond(int des, void * buf, int n, int min, int time, int timeout)
     // Get the other descriptor
     //int fildes = oneDBuffer[des].pairNum;
     int fildes = myVector[des]->pairNum;
-    int bytesRead = 0;
+    int totalBytesRead = 0;
 
-    // Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
-    bytesRead = wcsReadcond(des, buf, n, min, time, timeout );
-    
-    // Step 2. Lock the mutex.  Make sure you lock the right one.
-    //lock_guard<mutex> lgLock(oneDBuffer[fildes].m);
-    lock_guard<mutex> lgLock(myVector[fildes]->m);
-    
-    // Step 3. Decrement the buffer counter.
-    //oneDBuffer[fildes].buffered -= bytesRead;
-    myVector[fildes]->buffered -= bytesRead;
-    
-    // Step 4. If it's 0, notify your other thread.
-    //if (oneDBuffer[fildes].buffered == 0)
-    //{
-    //    oneDBuffer[fildes].cV.notify_one();
-    //}
-    if (myVector[fildes]->buffered == 0)
+    unique_lock<mutex> lgLock(myVector[fildes]->m, defer_lock);
+    if (min == 0)
     {
-        myVector[fildes]->cV.notify_one();
+    	// Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
+		totalBytesRead += wcsReadcond(des, buf, n, min, time, timeout );
+		n -= totalBytesRead;
+		// Step 2. Lock the mutex.  Make sure you lock the right one.
+		//lock_guard<mutex> lgLock(oneDBuffer[fildes].m);
+		lgLock.lock();
+
+		// Step 3. Decrement the buffer counter.
+		//oneDBuffer[fildes].buffered -= bytesRead;
+		myVector[fildes]->buffered -= totalBytesRead;
+
+		// Step 4. If it's 0, notify your other thread.
+		//if (oneDBuffer[fildes].buffered == 0)
+		//{
+		//    oneDBuffer[fildes].cV.notify_one();
+		//}
+		if (myVector[fildes]->buffered == 0)
+		{
+			myVector[fildes]->cV.notify_one();
+		}
+
+		// Step 5. Return and unlock (on out of scope)
+		lgLock.unlock();
     }
-    
-    // Step 5. Return and unlock (on out of scope)
-    return bytesRead;
+    for (int bytesRead = 0; totalBytesRead < min; totalBytesRead += bytesRead)
+    {
+        // Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
+    	bytesRead = wcsReadcond(des, (char *)buf + totalBytesRead, n, 1, time, timeout );
+        n -= bytesRead;
+        // Step 2. Lock the mutex.  Make sure you lock the right one.
+        //lock_guard<mutex> lgLock(oneDBuffer[fildes].m);
+        lgLock.lock();
+
+        // Step 3. Decrement the buffer counter.
+        //oneDBuffer[fildes].buffered -= bytesRead;
+        myVector[fildes]->buffered -= bytesRead;
+
+        // Step 4. If it's 0, notify your other thread.
+        //if (oneDBuffer[fildes].buffered == 0)
+        //{
+        //    oneDBuffer[fildes].cV.notify_one();
+        //}
+        if (myVector[fildes]->buffered == 0)
+        {
+            myVector[fildes]->cV.notify_one();
+        }
+
+        // Step 5. Return and unlock (on out of scope)
+        lgLock.unlock();
+    }
+    return totalBytesRead;
 }
 
