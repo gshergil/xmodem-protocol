@@ -20,7 +20,7 @@
 //
 // - v1 contains commented out static array version.
 // - v2 contains dynamic version.
-// - v3 (this) handles Cragi'snew solution.
+// - v3 (this) handles Craig's new solution.
 //
 
 /* Wrapper functions for ENSC-351, Simon Fraser University, By
