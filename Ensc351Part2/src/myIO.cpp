@@ -217,6 +217,9 @@ int myReadcond(int des, void * buf, int n, int min, int time, int timeout)
     int totalBytesRead = 0;
 
     unique_lock<mutex> lgLock(myVector[fildes]->m, defer_lock);
+
+    // Handle the case in which we have min = 0, in which case we should just read
+    // up to n, depending on how many bytes are available.
     if (min == 0)
     {
     	// Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
@@ -243,6 +246,9 @@ int myReadcond(int des, void * buf, int n, int min, int time, int timeout)
 		// Step 5. Return and unlock (on out of scope)
 		lgLock.unlock();
     }
+
+    // To handle the case when myTcdrain is called in the Medium, we shall only
+    // read one byte at a time until we have the minimum.
     for (int bytesRead = 0; totalBytesRead < min; totalBytesRead += bytesRead)
     {
         // Step 1. Do the read first from the originating socket, because wcsReadcond can block, and store bytes read.
