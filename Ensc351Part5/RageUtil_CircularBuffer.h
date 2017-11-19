@@ -7,6 +7,7 @@
 #define RAGE_UTIL_CIRCULAR_BUFFER
 
 #include <cstring>
+#include <atomic>
 
 /* Lock-free circular buffer.  This should be threadsafe if one thread is reading
  * and another is writing. */
@@ -26,7 +27,8 @@ class CircBuf
 
 	// Craig says:  making the variables volatile won't make this code thread safe.
 	/* These are volatile to prevent reads and writes to them from being optimized. */
-	/*volatile*/ unsigned read_pos, write_pos;
+	/*volatile*/
+	std::atomic<unsigned> read_pos, write_pos;
 
 public:
 	CircBuf()
@@ -40,6 +42,8 @@ public:
 		delete[] buf;
 	}
 
+    
+    // Change this function later - rclui
 	void swap( CircBuf &rhs )
 	{
 		std::swap( size, rhs.size );
@@ -59,8 +63,8 @@ public:
 	CircBuf( const CircBuf &cpy )
 	{
 		size = cpy.size;
-		read_pos = cpy.read_pos;
-		write_pos = cpy.write_pos;
+		read_pos.store(cpy.read_pos.load());
+		write_pos.store(cpy.write_pos.load());
 		m_iBlockSize = cpy.m_iBlockSize;
 		if( size )
 		{
@@ -74,38 +78,58 @@ public:
 	}
 
 	/* Return the number of elements available to read. */
+    // Modified to use atomic variable methods. - rclui
+    // Should we consider returning inside the if/else blocks? - rclui
 	unsigned num_readable() const
 	{
-		const int rpos = read_pos;
-		const int wpos = write_pos;
-		if( rpos < wpos )
+		// const int rpos = read_pos.load();
+		// const int wpos = write_pos.load();
+        
+		//if( rpos < wpos )
 			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-			return wpos - rpos;
-		else if( rpos > wpos )
-			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-			return size - (rpos - wpos);
+			//return wpos - rpos;
+		//else if( rpos > wpos )
+            /* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+			//return size - (rpos - wpos);
+        if (read_pos.load() < write_pos.load())
+            /* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
+            return write_pos.load() - read_pos.load();
+        else if ( read_pos.load() > write_pos.load())
+            /* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+			return size - (read_pos.load() - write_pos.load());
 		else // if( rpos == wpos )
 			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
 			return 0;
 	}
 
 	/* Return the number of writable elements. */
+    // Modified to use atomic variable methods. - rclui
+    // Should we consider returning inside the if/else blocks? - rclui
 	unsigned num_writable() const
 	{
-		const int rpos = read_pos;
-		const int wpos = write_pos;
+		// const int rpos = read_pos;
+		// const int wpos = write_pos;
 
 		int ret;
-		if( rpos < wpos )
-			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-			ret = size - (wpos - rpos);
-		else if( rpos > wpos )
+		//if( rpos < wpos )
+		//	/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
+		//	ret = size - (wpos - rpos);
+		//else if( rpos > wpos )
 			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-			ret = rpos - wpos;
+		//	ret = rpos - wpos;
+		//else // if( rpos == wpos )
+			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
+		//	ret = size;
+            
+        if( read_pos.load() < write_pos.load() )
+			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
+			ret = size - (write_pos.load() - read_pos.load());
+		else if( read_pos.load() > write_pos.load() )
+			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+			ret = read_pos.load() - write_pos.load();
 		else // if( rpos == wpos )
 			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
 			ret = size;
-
 		/* Subtract the blocksize, to account for the element that we never fill
 		 * while keeping the entries aligned to m_iBlockSize. */
 		return ret - m_iBlockSize;
@@ -135,31 +159,40 @@ public:
 			size = 0;
 	}
 
+    // Modified to use atomic variable methods. - rclui
 	void clear()
 	{
-		read_pos = write_pos = 0;
+		//read_pos = write_pos = 0;
+        read_pos.store(0);
+        write_pos.store(0);
 	}
 
 	/* Indicate that n elements have been written. */
+    // Modified to use atomic variable methods. - rclui
 	void advance_write_pointer( int n )
 	{
-		write_pos = (write_pos + n) % size;
+		//write_pos = (write_pos + n) % size;
+        write_pos.store((write_pos.load() + n) % size);
 	}
 
 	/* Indicate that n elements have been read. */
+    // Modified to use atomic variable methods. - rclui
 	void advance_read_pointer( int n )
 	{
-		read_pos = (read_pos + n) % size;
+		//read_pos = (read_pos + n) % size;
+        read_pos.store((read_pos.load() + n) % size);
 	}
 
+    // Modified to use atomic variable methods. - rclui
 	void get_write_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
-		const int rpos = read_pos;
-		const int wpos = write_pos;
+        // Is doing the following enough? - rclui
+		const int rpos = read_pos.load();
+		const int wpos = write_pos.load();
 
 		if( rpos <= wpos )
 		{
-			/* The buffer looks like "eeeeDDDDeeee" or "eeeeeeeeeeee" (e = empty, D = data). */
+			// The buffer looks like "eeeeDDDDeeee" or "eeeeeeeeeeee" (e = empty, D = data).
 			pPointers[0] = buf+wpos;
 			pPointers[1] = buf;
 
@@ -168,13 +201,14 @@ public:
 		}
 		else if( rpos > wpos )
 		{
-			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+			// The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data).
 			pPointers[0] = buf+wpos;
 			pPointers[1] = nullptr;
 
 			pSizes[0] = rpos - wpos;
 			pSizes[1] = 0;
 		}
+        
 
 		/* Subtract the blocksize, to account for the element that we never fill
 		 * while keeping the entries aligned to m_iBlockSize. */
@@ -194,10 +228,12 @@ public:
 		return pBothPointers[0];
 	}
 
+    // Modified to use atomic variable methods. - rclui
 	void get_read_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
-		const int rpos = read_pos;
-		const int wpos = write_pos;
+        // Is the following enough? - rclui
+		const int rpos = read_pos.load();
+		const int wpos = write_pos.load();
 
 		if( rpos < wpos )
 		{
