@@ -44,7 +44,7 @@
 
 ReceiverX::
 ReceiverX(int d, const char *fname, bool useCrc)
-:PeerX(d, fname, useCrc), goodBlk(false), goodBlk1st(false), numLastGoodBlk(0), errCnt(0)
+:PeerX(d, fname, useCrc), goodBlk(false), goodBlk1st(false), numLastGoodBlk(0)
 {
 	NCGbyte = useCrc ? 'C' : NAK;
 }
