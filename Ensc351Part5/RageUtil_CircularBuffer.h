@@ -1,3 +1,31 @@
+//============================================================================
+//
+//% Student Name 1: Ryan Lui
+//% Student 1 #: 301251951
+//% Student 1 userid (email): rclui (rclui@sfu.ca)
+//
+//% Student Name 2: Winsey Chui
+//% Student 2 #: 301246253
+//% Student 2 userid (email): winseyc (winseyc@sfu.ca)
+//
+//% Below, edit to list any people who helped you with the code in this file,
+//%      or put 'None' if nobody helped (the two of) you.
+//
+// Helpers: _everybody helped us/me with the assignment (list names or put 'None')__
+//
+// Also, list any resources beyond the course textbooks and the course pages on Piazza
+// that you used in making your submission.
+//
+// Resources:  ___________
+//
+//%% Instructions:
+//% * Put your name(s), student number(s), userid(s) in the above section.
+//% * Also enter the above information in other files to submit.
+//% * Edit the "Helpers" line and, if necessary, the "Resources" line.
+//% * Your group name should be "P5_<userid1>_<userid2>" (eg. P1_stu1_stu2)
+//% * Form groups as described at:  https://courses.cs.sfu.ca/docs/students
+//% * Submit files to courses.cs.sfu.ca
+
 /* CircBuf - A fast, thread-safe, lockless circular buffer. */
 /* read()/write() interface adjusted by Craig Scratchley to be similar
  * to the posix read() and write() functions in order to increase efficiency.
@@ -91,6 +119,10 @@ public:
 		//else if( rpos > wpos )
             /* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
 			//return size - (rpos - wpos);
+        //else // if( rpos == wpos )
+			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
+			//return 0;
+            
         if (read_pos.load() < write_pos.load())
             /* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
             return write_pos.load() - read_pos.load();
@@ -107,8 +139,8 @@ public:
     // Should we consider returning inside the if/else blocks? - rclui
 	unsigned num_writable() const
 	{
-		// const int rpos = read_pos;
-		// const int wpos = write_pos;
+		// const int rpos = read_pos.load();
+		// const int wpos = write_pos.load();
 
 		int ret;
 		//if( rpos < wpos )
@@ -120,6 +152,7 @@ public:
 		//else // if( rpos == wpos )
 			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
 		//	ret = size;
+        
             
         if( read_pos.load() < write_pos.load() )
 			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
@@ -172,7 +205,7 @@ public:
 	void advance_write_pointer( int n )
 	{
 		//write_pos = (write_pos + n) % size;
-        write_pos.store((write_pos.load() + n) % size);
+        write_pos.store((write_pos.load(std::memory_order_relaxed) + n) % size, std::memory_order_release);
 	}
 
 	/* Indicate that n elements have been read. */
@@ -180,15 +213,15 @@ public:
 	void advance_read_pointer( int n )
 	{
 		//read_pos = (read_pos + n) % size;
-        read_pos.store((read_pos.load() + n) % size);
+        read_pos.store((read_pos.load(std::memory_order_relaxed) + n) % size, std::memory_order_release);
 	}
 
     // Modified to use atomic variable methods. - rclui
 	void get_write_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
         // Is doing the following enough? - rclui
-		const int rpos = read_pos.load();
-		const int wpos = write_pos.load();
+        const int wpos = write_pos.load(std::memory_order_relaxed);
+		const int rpos = read_pos.load(std::memory_order_acquire);
 
 		if( rpos <= wpos )
 		{
@@ -232,8 +265,8 @@ public:
 	void get_read_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
         // Is the following enough? - rclui
-		const int rpos = read_pos.load();
-		const int wpos = write_pos.load();
+		const int rpos = read_pos.load(std::memory_order_relaxed);
+		const int wpos = write_pos.load(std::memory_order_acquire);
 
 		if( rpos < wpos )
 		{
