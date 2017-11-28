@@ -213,7 +213,7 @@ public:
         const int wpos = write_pos.load(std::memory_order_relaxed);
         
         // Need to make sure data is written before it is read, so this is acquire.
-        // This synchronizes with the release in advance_read_pointer(), which is called in the reading thread..
+        // This synchronizes with the release in advance_read_pointer(), which is called in the reading thread.
 		const int rpos = read_pos.load(std::memory_order_acquire); 
 
 		if( rpos <= wpos )
@@ -262,7 +262,7 @@ public:
 		const int rpos = read_pos.load(std::memory_order_relaxed); 
         
         // Make sure data is read before it is written, hence acquire here.
-        // This synchronizes with the release in advance_write_pointer().
+		// This synchronizes with the release in advance_write_pointer(), which is called in the writing thread.
 		const int wpos = write_pos.load(std::memory_order_acquire); 
 
 		if( rpos < wpos )
