@@ -11,12 +11,12 @@
 //% Below, edit to list any people who helped you with the code in this file,
 //%      or put 'None' if nobody helped (the two of) you.
 //
-// Helpers: _everybody helped us/me with the assignment (list names or put 'None')__
+// Helpers: Ivana Jovasevic
 //
 // Also, list any resources beyond the course textbooks and the course pages on Piazza
 // that you used in making your submission.
 //
-// Resources:  ___________
+// Resources: None
 //
 //%% Instructions:
 //% * Put your name(s), student number(s), userid(s) in the above section.
@@ -25,6 +25,13 @@
 //% * Your group name should be "P5_<userid1>_<userid2>" (eg. P1_stu1_stu2)
 //% * Form groups as described at:  https://courses.cs.sfu.ca/docs/students
 //% * Submit files to courses.cs.sfu.ca
+//
+// Notes:
+// Check out the following functions for atomic comments:
+// - advance_read_pointer
+// - advance_write_pointer
+// - get_read_pointers
+// - get_write_pointers
 
 /* CircBuf - A fast, thread-safe, lockless circular buffer. */
 /* read()/write() interface adjusted by Craig Scratchley to be similar
@@ -56,7 +63,7 @@ class CircBuf
 	// Craig says:  making the variables volatile won't make this code thread safe.
 	/* These are volatile to prevent reads and writes to them from being optimized. */
 	/*volatile*/
-	std::atomic<unsigned> read_pos, write_pos;
+	std::atomic<unsigned> read_pos, write_pos; // Use atomics, and below use the memory ordering from the book.
 
 public:
 	CircBuf()
@@ -184,6 +191,7 @@ public:
 	void advance_write_pointer( int n )
 	{
 		//write_pos = (write_pos + n) % size;
+        // The below is release, because we want to synchronize it with the thread that is reading.
         write_pos.store((write_pos.load(std::memory_order_relaxed) + n) % size, std::memory_order_release);
 	}
 
@@ -192,6 +200,8 @@ public:
 	void advance_read_pointer( int n )
 	{
 		//read_pos = (read_pos + n) % size;
+        
+        // The below is release, because we want to synchronize it with the thread that is writing.
         read_pos.store((read_pos.load(std::memory_order_relaxed) + n) % size, std::memory_order_release);
 	}
 
@@ -199,8 +209,12 @@ public:
 	void get_write_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
         // Is doing the following enough? - rclui
+        // We want to write as fast as possible, hence the following is relaxed.
         const int wpos = write_pos.load(std::memory_order_relaxed);
-		const int rpos = read_pos.load(std::memory_order_acquire);
+        
+        // Need to make sure data is written before it is read, so this is acquire.
+        // This synchronizes with the release in advance_read_pointer(), which is called in the reading thread..
+		const int rpos = read_pos.load(std::memory_order_acquire); 
 
 		if( rpos <= wpos )
 		{
@@ -244,8 +258,12 @@ public:
 	void get_read_pointers( T *pPointers[2], unsigned pSizes[2] )
 	{
         // Is the following enough? - rclui
-		const int rpos = read_pos.load(std::memory_order_relaxed);
-		const int wpos = write_pos.load(std::memory_order_acquire);
+        // Read as fast as possible, hence this is relaxed.
+		const int rpos = read_pos.load(std::memory_order_relaxed); 
+        
+        // Make sure data is read before it is written, hence acquire here.
+        // This synchronizes with the release in advance_write_pointer().
+		const int wpos = write_pos.load(std::memory_order_acquire); 
 
 		if( rpos < wpos )
 		{
