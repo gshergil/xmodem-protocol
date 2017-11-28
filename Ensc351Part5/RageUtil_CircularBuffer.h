@@ -110,25 +110,14 @@ public:
     // Should we consider returning inside the if/else blocks? - rclui
 	unsigned num_readable() const
 	{
-		// const int rpos = read_pos.load();
-		// const int wpos = write_pos.load();
-        
-		//if( rpos < wpos )
+		const int rpos = read_pos.load();
+		const int wpos = write_pos.load();
+		if( rpos < wpos )
 			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-			//return wpos - rpos;
-		//else if( rpos > wpos )
-            /* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-			//return size - (rpos - wpos);
-        //else // if( rpos == wpos )
-			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
-			//return 0;
-            
-        if (read_pos.load() < write_pos.load())
-            /* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-            return write_pos.load() - read_pos.load();
-        else if ( read_pos.load() > write_pos.load())
-            /* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-			return size - (read_pos.load() - write_pos.load());
+			return wpos - rpos;
+		else if( rpos > wpos )
+			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+			return size - (rpos - wpos);
 		else // if( rpos == wpos )
 			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
 			return 0;
@@ -139,33 +128,23 @@ public:
     // Should we consider returning inside the if/else blocks? - rclui
 	unsigned num_writable() const
 	{
-		// const int rpos = read_pos.load();
-		// const int wpos = write_pos.load();
-
-		int ret;
-		//if( rpos < wpos )
-		//	/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-		//	ret = size - (wpos - rpos);
-		//else if( rpos > wpos )
-			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-		//	ret = rpos - wpos;
-		//else // if( rpos == wpos )
-			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
-		//	ret = size;
-        
-            
-        if( read_pos.load() < write_pos.load() )
-			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
-			ret = size - (write_pos.load() - read_pos.load());
-		else if( read_pos.load() > write_pos.load() )
-			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
-			ret = read_pos.load() - write_pos.load();
-		else // if( rpos == wpos )
-			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
-			ret = size;
-		/* Subtract the blocksize, to account for the element that we never fill
+		const int rpos = read_pos.load();
+		const int wpos = write_pos.load();
+ 
+ 		int ret;
+ 		if( rpos < wpos )
+ 			/* The buffer looks like "eeeeDDDDeeee" (e = empty, D = data). */
+ 			ret = size - (wpos - rpos);
+ 		else if( rpos > wpos )
+ 			/* The buffer looks like "DDeeeeeeeeDD" (e = empty, D = data). */
+ 			ret = rpos - wpos;
+ 		else // if( rpos == wpos )
+ 			/* The buffer looks like "eeeeeeeeeeee" (e = empty, D = data). */
+ 			ret = size;
+ 
+ 		/* Subtract the blocksize, to account for the element that we never fill
 		 * while keeping the entries aligned to m_iBlockSize. */
-		return ret - m_iBlockSize;
+        return ret - m_iBlockSize;
 	}
 
 	unsigned capacity() const { return size; }
@@ -197,7 +176,7 @@ public:
 	{
 		//read_pos = write_pos = 0;
         read_pos.store(0);
-        write_pos.store(0);
+        write_pos.store(0, std::memory_order_release);
 	}
 
 	/* Indicate that n elements have been written. */
